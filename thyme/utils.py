@@ -1,19 +1,18 @@
-from thyme.timeline import State
+from thyme.timeline import Subject
 
 
-def report_timeline(s: State):
-    events = list(s._events)
-    def collect_from_children(child: State):
+def report_timeline(s: Subject):
+    events = set()
+    def collect_from_children(child: Subject):
         for ev, _ in child._events:
-            val = s.at(ev.point)
-            events.append((ev, val))
+            events.add(ev)
         for grandchild in child._children.values():
             collect_from_children(grandchild)
-    for child in s._children.values():
-        collect_from_children(child)
-    events.sort(key=lambda x: x[0].point)
+    collect_from_children(s)
+    events = sorted(events, key=lambda x: x.point)
     prev = None
-    for ev, val in events:
+    for ev in events:
+        val = s.at(ev.point)
         if prev is not None:
             delta = ev.point - prev.point
             print(f"... {delta} later")

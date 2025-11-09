@@ -1,10 +1,9 @@
 import sys
-
-sys.path.insert(0, ".")
+from varname.helpers import exec_code
 
 script_path = sys.argv[1]
 
 with open(script_path) as f:
     code = f.read()
 
-exec(code)
+exec_code(code)
