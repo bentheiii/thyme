@@ -52,7 +52,7 @@ class Subject[P: int, T]:
             name = varname().replace("_", " ").title()
         self._name = name
 
-        self._parents: tuple[ReferenceType[Subject[P, Any]], ...] = tuple(ref(parent) for parent in parents)
+        self._parents: set[ReferenceType[Subject[P, Any]]] = set(ref(parent) for parent in parents)
         self._events: list[tuple[Event[P], T]] = []
         self._children: dict[str, Subject[P, Any]] = {}
         self._default = default
@@ -96,6 +96,9 @@ class Subject[P: int, T]:
     def __setattr__(self, name, value):
         if name.startswith("_"):
             super().__setattr__(name, value)
+        elif isinstance(value, Subject):
+            value._parents.add(ref(self))
+            self._children[name] = value
         else:
             child = self.__getattr__(name)
             child._default = value
