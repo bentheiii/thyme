@@ -7,8 +7,11 @@ from weakref import ReferenceType, ref
 
 from varname import varname
 
+
 class Event[P: int]:
-    def __init__(self, point: P, description: str, *extras: _Outcome[P, Any] | Subject[P, Any]) -> None:
+    def __init__(
+        self, point: P, description: str, *extras: _Outcome[P, Any] | Subject[P, Any]
+    ) -> None:
         self.point = point
         self.description = description
         outcomes = []
@@ -26,11 +29,14 @@ class Event[P: int]:
 class _Outcome[P: int, T](ABC):
     def __init__(self, state: Subject[P, T]) -> None:
         self.state = state
+
     def pertains_to(self) -> Subject[P, T]:
         return self.state
+
     @abstractmethod
     def on_assign(self, point: P) -> None:
         pass
+
 
 class _Set[P: int, T](_Outcome[P, T]):
     def __init__(self, state: Subject[P, T], value: T) -> None:
@@ -40,49 +46,61 @@ class _Set[P: int, T](_Outcome[P, T]):
     def on_assign(self, ev: Event[P]) -> None:
         self.state._set(ev, self.value)
 
+
 class _Pertains[P, T](_Outcome[P, T]):
     def on_assign(self, ev: Event[P]) -> None:
         self.state._set_pertains(ev)
 
+
 hollow_value = object()
 
+
 class Subject[P: int, T]:
-    def __init__(self, name: str = ..., *, parents: Collection[Subject[P, Any]] = (), default: T | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        name: str = ...,
+        *,
+        parents: Collection[Subject[P, Any]] = (),
+        default: T | None = None,
+        **kwargs,
+    ) -> None:
         if name is ...:
             name = varname().replace("_", " ").title()
         self._name = name
 
-        self._parents: set[ReferenceType[Subject[P, Any]]] = set(ref(parent) for parent in parents)
+        self._parents: set[ReferenceType[Subject[P, Any]]] = set(
+            ref(parent) for parent in parents
+        )
         self._events: list[tuple[Event[P], T]] = []
         self._children: dict[str, Subject[P, Any]] = {}
         self._default = default
 
         for key, value in kwargs.items():
             self.make_child(key, value)
-    
+
     def name(self) -> str:
         return self._name
-    
+
     def at(self, point: P) -> T:
         idx = bisect(self._events, point, key=lambda x: x[0].point)
         while True:
             if idx == 0:
                 return self._default
-            v = self._events[idx-1][1]
+            v = self._events[idx - 1][1]
             if v is hollow_value:
                 idx -= 1
                 continue
             return v
-    
+
     def __lshift__(self, other: T) -> _Set[P, T]:
         return _Set(self, other)
-    
+
     def begin(self, value: T = True) -> _Set[P, T]:
         return self << value
-    
+
     def end(self, value: T = False) -> _Set[P, T]:
         return self << value
-    
+
     def make_child(self, name: str, default: Any) -> Subject[P, Any]:
         child = Subject(name=f"{self.name()}.{name}", parents=[self], default=default)
         self._children[name] = child
@@ -92,7 +110,7 @@ class Subject[P: int, T]:
         if name not in self._children:
             self.make_child(name, None)
         return self._children[name]
-    
+
     def __setattr__(self, name, value):
         if name.startswith("_"):
             super().__setattr__(name, value)
@@ -102,22 +120,24 @@ class Subject[P: int, T]:
         else:
             child = self.__getattr__(name)
             child._default = value
-        
+
     def _set(self, ev: Event[P], value: T) -> None:
         # we expect events to be inserted in chronological order
         self._events.append((ev, value))
         self._events.sort(key=lambda x: x[0].point)
 
-    def _set_pertains(self, ev: Event[P])->None:
+    def _set_pertains(self, ev: Event[P]) -> None:
         self._events.append((ev, hollow_value))
 
     def ancestors(self) -> Collection[Subject[P, Any]]:
         result = set()
+
         def collect(s: Subject[P, Any]):
             result.add(s)
             for parent_ref in s._parents:
                 parent = parent_ref()
                 if parent and parent not in result:
                     collect(parent)
+
         collect(self)
         return result

@@ -3,11 +3,13 @@ from thyme.timeline import Subject
 
 def report_timeline(s: Subject):
     events = set()
+
     def collect_from_children(child: Subject):
         for ev, _ in child._events:
             events.add(ev)
         for grandchild in child._children.values():
             collect_from_children(grandchild)
+
     collect_from_children(s)
     events = sorted(events, key=lambda x: x.point)
     prev = None
